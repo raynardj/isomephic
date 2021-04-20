@@ -1,0 +1,53 @@
+<head>
+
+    <link rel="stylesheet" href="static/bootstrap.css">
+    <link rel="stylesheet" href="static/fa/css/font-awesome.min.css">
+    <script src="static/jquery.min.js"></script>
+
+    <title>
+        Options - Isomephic
+    </title>
+</head> 
+<html>
+<div class="container">
+    <h2 class="m-3">
+        <i class="fa fa-cog"></i> Options
+    </h2>
+    <div class="row mt-5 ml-3 mr-3 ">
+        <div class='col-sm-4'>
+            <img src="isomephic.png" height='150px' alt="Isomephic">
+        </div>
+        <div class="col-sm-8">
+            <label for="url"> <i class="fa fa-link"></i> Connect URL</label>
+            <div class="input-group">
+                <input id="url" type="text" class="form-control" placeholder="http://localhost:7474/db/{database}/tx">
+                <button class="btn btn-primary" id="test_url">
+                    Test
+                </button>
+            </div>
+            <label for="user"> <i class="fa fa-user"></i> User</label>
+            <input id="user" type="text" class="form-control" placeholder="Neo4j user name, left blank if no authentication">
+            <label for="password"> <i class="fa fa-lock"></i> Password</label>
+            <input id="password" type="password" class="form-control" placeholder="Neo4j password, left blank if no authentication">
+            <hr>
+            <label for="name_kw"> <i class="fa far fa-bookmark"></i> "Name" Field Key Word</label>
+            <input id="name_kw" type="text" class="form-control" placeholder="Name key word">
+            <label for="id_kw"> <i class="fa fa-key"></i> "id" Field Key Word</label>
+            <input id="id_kw" type="text" class="form-control" placeholder="id key word">
+        <button class="btn btn-success mt-3" id="save_btn">Save</button>
+        <div class="mt-3">
+            <h5>
+                <i class="fa fa-flask"></i> Test Results
+            </h5>
+
+            <div id="test_result" class="mt-2">
+
+            </div>
+        </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="options.js" type="module"></script>
+</html>

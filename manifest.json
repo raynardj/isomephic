@@ -1,0 +1,19 @@
+{
+    "name": "Isomephic",
+    "description" : "Neo4j DIY Extension",
+    "version": "1.0",
+    "manifest_version": 2,
+    "browser_action": {
+        "default_popup": "menu.html",
+        "default_icon": "isomephic.png"
+      },
+    "icons":{
+      "16":"isomephic.png",
+      "48":"isomephic.png",
+      "128":"isomephic.png"
+    },
+    "options_page":"options.html",
+    "permissions": [
+        "storage", "tabs", "http://*/*","https://*/*","file://*/*"
+      ]
+}
