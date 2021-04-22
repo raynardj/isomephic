@@ -37,8 +37,13 @@ var pretty_json = (data) => {
         var row = ce("tr")
         table.append(row)
         var v = data[k];
+        if(typeof(v)=="object"){
+            var v_ = pretty_json(v);
+        }else{
+            var v_ = v;
+        }
         var th = ce("th"); $(th).html(k);$(row).append(th)
-        var td = ce("td"); $(td).html(v);$(row).append(td)
+        var td = ce("td"); $(td).html(v_);$(row).append(td)
     }
     $(outter).html(table)
     return outter

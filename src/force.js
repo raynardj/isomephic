@@ -13,7 +13,7 @@ var forceProperties = {
     },
     charge: {
         enabled: true,
-        strength: -50,
+        strength: -80,
         distanceMin: 1,
         distanceMax: 2000
     },
@@ -59,7 +59,7 @@ function dragged(e, d) {
     d.fx = e.x; d.fy = e.y;
 }
 
-var updateForces = (simulation) => {
+var updateForces = (simulation, data) => {
     // get each force by name and update the properties
     simulation.force("center")
         .x(width * forceProperties.center.x)
@@ -82,14 +82,14 @@ var updateForces = (simulation) => {
         .id(function (d) { return d.id; })
         .distance(forceProperties.link.distance)
         .iterations(forceProperties.link.iterations)
-        .links(forceProperties.link.enabled ? window.links : []);
+        .links(forceProperties.link.enabled ? data.d3links : []);
 
     // updates ignored until this is run
     // restarts the simulation (important if simulation has already slowed down)
     simulation.alpha(1).restart();
 }
 
-var initializeForces = (simulation) => {
+var initializeForces = (simulation, data) => {
     // add forces and associate each with a name
     simulation
         .force("link", d3.forceLink())
@@ -99,27 +99,30 @@ var initializeForces = (simulation) => {
         .force("forceX", d3.forceX())
         .force("forceY", d3.forceY());
     // apply properties to each of the forces
-    updateForces(simulation);
+    updateForces(simulation, data);
 }
 
-var ticked = () => {
-    // window.link
-    //     .attr("x1", function(d) { return d.source.x; })
-    //     .attr("y1", function(d) { return d.source.y; })
-    //     .attr("x2", function(d) { return d.target.x; })
-    //     .attr("y2", function(d) { return d.target.y; });
+var ticked = (data) =>{
+    var ticked_ = () => {
+        data.d3links
+            .attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; })
 
-    window.d3nodes
-        .attr("transform", (d) => { return `translate(${d.x},${d.y})` })
-    // .attr("x", function (d) { return d.x; })
-    // .attr("y", function (d) { return d.y; });
-    // d3.select('#alpha_value').style('flex-basis', (simulation.alpha()*100) + '%');
+        data.d3nodes
+            .attr("transform", (d) => { return `translate(${d.x},${d.y})` })
+        // .attr("x", function (d) { return d.x; })
+        // .attr("y", function (d) { return d.y; });
+        // d3.select('#alpha_value').style('flex-basis', (simulation.alpha()*100) + '%');
+    }
+return ticked_
 }
 
-var initializeSimulation = (simulation, nodes) => {
-    simulation.nodes(nodes);
-    initializeForces(simulation);
-    simulation.on("tick", ticked);
+var initializeSimulation = (simulation, data) => {
+    simulation.nodes(data.nodes);
+    initializeForces(simulation, data);
+    simulation.on("tick", ticked(data));
 }
 
 export {
