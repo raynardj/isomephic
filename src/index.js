@@ -22,6 +22,9 @@ var idVal = elementId => byId(elementId).value
 var active_node_style = "fill:rgba(255,200,80,0.6);stroke:rgba(200,120,80,0.6);stroke-width:5"
 var deactive_node_style = "fill:rgba(130,190,180,0.6);stroke:rgba(70,120,230,0.6);stroke-width:3"
 
+var active_line_style = "stroke:rgba(90,250,230,0.8);stroke-width:5;opacity:0.8";
+var deactive_line_style = "stroke:rgba(0,0,0,0.5);stroke-width:3;opacity:0.5";
+
 var set_config = (config) => {
     window.iso_config = config
 }
@@ -68,14 +71,36 @@ var visualize_node = (node) => {
     return node.row[0].name
 }
 
-var node_active = (e, d) => {
-    var idx=d.row[0].idx
+var get_link_triplets = (d) =>{
+    return `${d[0].idx}_${d[1].idx}_${d[2].idx}`
+}
+
+var deactivate_all = () =>{
+    /*
+    Switch all nodes/ edges into deactivated status
+    */
     $(".node_box").each(function (){
         this.style = deactive_node_style
     })
+    $(".link").each(function (){
+        this.style = deactive_line_style
+    })
+}
+
+var node_active = (e, d) => {
+    var idx=d.row[0].idx
+    deactivate_all()
     byId(`node_box_${idx}`).style = active_node_style
 
     $(`#node_tag_${idx}`).collapse('show')
+}
+
+var link_active = (e, d) =>{
+    var triplet = get_link_triplets(d);
+    deactivate_all()
+    byId(`link_${triplet}`).style = active_line_style
+
+    $(`#line_tag_${triplet}`).collapse('show')
 }
 
 var d3_paint_tags = (data) =>{
@@ -120,22 +145,22 @@ var d3_paint_tags = (data) =>{
     var line_tags_head = line_tags
     .append("div")
     .attr("class","card-header")
-    .attr("id", (d)=>{return `line_head_${d[1].idx}`})
+    .attr("id", (d)=>{return `line_head_${get_link_triplets(d)}`})
 
     line_tags_head.append("h6")
     .append("div")
     // .attr("class","btn btn-block text-left")
     .attr("data-toggle","collapse")
-    .attr("data-target",(d)=>{return `#line_tag_${d[1].idx}`})
+    .attr("data-target",(d)=>{return `#line_tag_${get_link_triplets(d)}`})
     .attr("aria-expanded","true")
-    .attr("aria-controls",(d)=>{return `line_tag_${d[1].idx}`})
+    .attr("aria-controls",(d)=>{return `line_tag_${get_link_triplets(d)}`})
     .text((d)=>{return `(${d.source.row[0].name})-${d[1].name}->(${d.target.row[0].name})`})
-    // .on("click", node_active)
+    .on("click", link_active)
 
     var line_tags_body = line_tags.append("div")
-    .attr("id",(d)=>{return `line_tag_${d[1].idx}`})
+    .attr("id",(d)=>{return `line_tag_${get_link_triplets(d)}`})
     .attr("class","collapse p-2 tag_body")
-    .attr("aria-labelledby",(d)=>{return `line_head_${d[1].idx}`})
+    .attr("aria-labelledby",(d)=>{return `line_head_${get_link_triplets(d)}`})
     .attr("data-parent","#all_tags")
     .append((d)=>{return pretty_json(d[1])})
 }
@@ -176,15 +201,20 @@ var visualize_link = (d)=>{
     return d[1].name
 }
 
+
+
 var d3_paint_links = (links) =>{
     var u = d3.select("svg")
         .selectAll(".link")
         .data(links)
     
     var link = u.enter().append("line")
-        .attr("className", "link")
-        .attr("style","stroke:rgba(0,0,0,0.5);stroke-width:3;opacity:1")
-        .merge(u);
+        .attr("id",(d)=>{
+            return `link_${get_link_triplets(d)}`
+        })
+        .attr("class", "link")
+        .attr("style",deactive_line_style)
+        .merge(u).on("click", link_active);
 
     // var line = link.append("line")
         
