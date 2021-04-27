@@ -9,7 +9,6 @@ var save = (data) =>{
 }
 
 var load_to_inputs = (data) =>{
-    console.log(data);
     for(var k in data){
         if(data[k]){
             byId(k).value = data[k]

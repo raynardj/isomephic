@@ -6,6 +6,8 @@ Variables
 var height = document.querySelector("svg").height.baseVal.value;
 var width = document.querySelector("svg").width.baseVal.value;
 
+console.log(`SVG height ${height}, width ${width}`)
+
 var forceProperties = {
     center: {
         x: 0.5,
@@ -13,30 +15,30 @@ var forceProperties = {
     },
     charge: {
         enabled: true,
-        strength: -80,
-        distanceMin: 1,
+        strength: -50,
+        distanceMin: 20,
         distanceMax: 2000
     },
     collide: {
         enabled: true,
-        strength: .7,
+        strength: .5,
         iterations: 1,
-        radius: 10
+        radius: 50
     },
     forceX: {
-        enabled: false,
+        enabled: true,
         strength: .1,
-        x: .5
+        x: .05
     },
     forceY: {
-        enabled: false,
+        enabled: true,
         strength: .1,
-        y: .5
+        y: .05
     },
     link: {
         enabled: true,
-        distance: 30,
-        iterations: 1
+        distance: 50,
+        iterations: 3
     }
 }
 
@@ -64,10 +66,11 @@ var updateForces = (simulation, data) => {
     simulation.force("center")
         .x(width * forceProperties.center.x)
         .y(height * forceProperties.center.y);
-    simulation.force("charge")
-        .strength(forceProperties.charge.strength * forceProperties.charge.enabled)
-        .distanceMin(forceProperties.charge.distanceMin)
-        .distanceMax(forceProperties.charge.distanceMax);
+    simulation.force("charge",d3.forceManyBody())
+    // simulation.force("charge")
+    //     .strength(forceProperties.charge.strength * forceProperties.charge.enabled)
+    //     .distanceMin(forceProperties.charge.distanceMin)
+    //     .distanceMax(forceProperties.charge.distanceMax);
     simulation.force("collide")
         .strength(forceProperties.collide.strength * forceProperties.collide.enabled)
         .radius(forceProperties.collide.radius)
@@ -79,7 +82,7 @@ var updateForces = (simulation, data) => {
         .strength(forceProperties.forceY.strength * forceProperties.forceY.enabled)
         .y(height * forceProperties.forceY.y);
     simulation.force("link")
-        .id(function (d) { return d.id; })
+        .id(d=>d.id)
         .distance(forceProperties.link.distance)
         .iterations(forceProperties.link.iterations)
         .links(forceProperties.link.enabled ? data.d3links : []);
@@ -98,6 +101,7 @@ var initializeForces = (simulation, data) => {
         .force("center", d3.forceCenter())
         .force("forceX", d3.forceX())
         .force("forceY", d3.forceY());
+
     // apply properties to each of the forces
     updateForces(simulation, data);
 }
@@ -112,9 +116,6 @@ var ticked = (data) =>{
 
         data.d3nodes
             .attr("transform", (d) => { return `translate(${d.x},${d.y})` })
-        // .attr("x", function (d) { return d.x; })
-        // .attr("y", function (d) { return d.y; });
-        // d3.select('#alpha_value').style('flex-basis', (simulation.alpha()*100) + '%');
     }
 return ticked_
 }
