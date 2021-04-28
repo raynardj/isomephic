@@ -61,16 +61,15 @@ function dragged(e, d) {
     d.fx = e.x; d.fy = e.y;
 }
 
-var updateForces = (simulation, data) => {
+var updateForces = () => {
+    var data = window.graph_data
+    simulation.nodes(data.nodes);
     // get each force by name and update the properties
     simulation.force("center")
         .x(width * forceProperties.center.x)
         .y(height * forceProperties.center.y);
     simulation.force("charge",d3.forceManyBody())
-    // simulation.force("charge")
-    //     .strength(forceProperties.charge.strength * forceProperties.charge.enabled)
-    //     .distanceMin(forceProperties.charge.distanceMin)
-    //     .distanceMax(forceProperties.charge.distanceMax);
+
     simulation.force("collide")
         .strength(forceProperties.collide.strength * forceProperties.collide.enabled)
         .radius(forceProperties.collide.radius)
@@ -90,10 +89,14 @@ var updateForces = (simulation, data) => {
     // updates ignored until this is run
     // restarts the simulation (important if simulation has already slowed down)
     simulation.alpha(1).restart();
+    simulation.on("tick", ticked(data))
+
+    window.graph_data = data;
 }
 
-var initializeForces = (simulation, data) => {
+var initializeForces = () => {
     // add forces and associate each with a name
+
     simulation
         .force("link", d3.forceLink())
         .force("charge", d3.forceManyBody())
@@ -103,28 +106,28 @@ var initializeForces = (simulation, data) => {
         .force("forceY", d3.forceY());
 
     // apply properties to each of the forces
-    updateForces(simulation, data);
+    updateForces();
 }
 
-var ticked = (data) =>{
+var ticked = () =>{
     var ticked_ = () => {
-        data.d3links
-            .attr("x1", function(d) { return d.source.x; })
-            .attr("y1", function(d) { return d.source.y; })
-            .attr("x2", function(d) { return d.target.x; })
-            .attr("y2", function(d) { return d.target.y; })
+        window.graph_data.d3links
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y)
 
-        data.d3nodes
-            .attr("transform", (d) => { return `translate(${d.x},${d.y})` })
+        window.graph_data.d3nodes
+            .attr("transform", d => `translate(${d.x},${d.y})` )
     }
 return ticked_
 }
 
-var initializeSimulation = (simulation, data) => {
-    simulation.nodes(data.nodes);
-    initializeForces(simulation, data);
-    simulation.on("tick", ticked(data));
+var initializeSimulation = () => {
+        // simulation.nodes(data.nodes);
+        initializeForces();
 }
+
 
 export {
     forceProperties, simulation, height, width,

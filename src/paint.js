@@ -6,7 +6,8 @@ import {
 import {
     forceProperties,
     dragstarted, dragended, dragged, simulation,
-    initializeSimulation
+    initializeSimulation,
+    updateForces
 } from "./force.js"
 
 import { pretty_json } from "../easy_bs.js"
@@ -40,12 +41,25 @@ var node_active = (e, d) => {
     $(`#node_tag_${idx}`).collapse('show')
 }
 
+
+var node_active2 = (ds) => {
+    
+    deactivate_all()
+
+    ds.map(d=>{
+    var idx = d.row[0].idx
+    byId(`node_box_${idx}`).style = style_config.node.active2
+    })
+}
+
 var link_active = (e, d) => {
     var triplet = get_link_triplets(d);
     deactivate_all()
     byId(`link_${triplet}`).style = style_config.line.active
 
     $(`#line_tag_${triplet}`).collapse('show')
+
+    node_active2([d.source, d.target])
 }
 
 var find_upward = (idx) => {
@@ -53,97 +67,101 @@ var find_upward = (idx) => {
     var d3links = []
     console.log(`finding: .link_end_${idx}`)
 
-    $(`.link_end_${idx}`).each(function(){
+    $(`.link_end_${idx}`).each(function () {
         node_indices.push($(this).data('start'));
         d3links.push(this)
     })
-    return {node_indices, d3links}
+    return { node_indices, d3links }
 }
 
 var find_downward = (idx) => {
     var node_indices = []
     var d3links = []
 
-    $(`.link_start_${idx}`).each(function(){
+    $(`.link_start_${idx}`).each(function () {
         node_indices.push($(this).data('end'));
         d3links.push(this)
     })
-    return {node_indices, d3links}
+    return { node_indices, d3links }
 }
 
-var remove_side = (data, side)=>{
+var remove_node = idx => {
+    remove_single_node(idx);
+    get_links(d3_re_paint(updateForces))
+}
+
+var remove_side = (side) => {
     var finder = {
-        upward:find_upward,
-        downward:find_downward
+        upward: find_upward,
+        downward: find_downward
     }[side]
-    var remove_side_ = idx =>{
+    var remove_side_ = idx => {
         console.log(`Removing related nodes to ${idx}`)
-        var {node_indices, d3links} = finder(idx)
-        discard_links()
-        for (var i in node_indices){
+        simulation.stop()
+        var { node_indices, d3links } = finder(idx)
+        for (var i in node_indices) {
             var fi = node_indices[i];
-            remove_single_node(data, fi)
+            remove_single_node(fi)
         }
-        get_links(data)()
+        get_links(d3_re_paint(updateForces))
     }
     return remove_side_
 }
 
-var remove_single_node = (data, idx) =>{
-    var node = data.nodes_by_idx[idx];
-    var id_ = node.meta[0].id;
+var remove_single_node = (idx) => {
+    var node = window.graph_data.nodes_by_idx[idx];
+    if (node) {
+        node.links = [];
+        var id_ = node.meta[0].id;
 
-    delete data.nodes_by_identifier[id_]
-    delete data.id_to_idx[id_]
-    delete data.nodes_by_idx[idx]
-    delete data.idx_to_id[idx]
-    for(var i in data.nodes){
-        if(get_idx(data.nodes[i])==idx){delete data.nodes[i]}
+        delete window.graph_data.nodes_by_identifier[id_]
+        delete window.graph_data.id_to_idx[id_]
+        delete window.graph_data.nodes_by_idx[idx]
+        delete window.graph_data.idx_to_id[idx]
+
+        window.graph_data.nodes = window.graph_data.nodes.filter(x => get_idx(x) != idx)
+
+        $(`#node_g_${idx}`).remove()
+        $(`#node_tag_frame_${idx}`).remove()
     }
-    $(`#node_g_${idx}`).remove()
-    $(`#node_tag_frame_${idx}`).remove()
-    
 }
 
-var get_links = (data) => {
-    var get_links_ = () => {
-        discard_links();
-        var ids = []
-        for (var i in data.nodes_by_identifier) { ids.push(i) }
+var get_links = (callback) => {
+    var data = window.graph_data
+    discard_links();
+    var ids = []
+    for (var i in data.nodes) { ids.push(data.nodes[i].meta[0].id) }
 
-        transaction({
-            statements: [
-                {
-                    statement: `
+    transaction({
+        statements: [
+            {
+                statement: `
                     MATCH (a)-[r]->(b) WHERE id(a) IN [${ids.join(",")}]
                     AND id(b) IN [${ids.join(",")}]
                     RETURN DISTINCT a.idx, r, b.idx
                     `,
-                    parameters: {}
-                }
-            ]
-        },
-            gather_links(data, d3_paint),
-            console.error
-        )
-    }
-    return get_links_
+                parameters: {}
+            }
+        ]
+    },
+        gather_links(callback),
+        console.error
+    )
 }
 
-var add_nodes = (data, new_nodes) => {
-    console.log(`new nodes`);
-    console.log(new_nodes);
+var add_nodes = (new_nodes) => {
     for (var i in new_nodes) {
         var node = new_nodes[i];
-        if (!data.nodes_by_idx[get_idx(node)]) {
-            data.nodes.push(node)
-            data.nodes_by_idx[node.row[0].idx] = node
-            data.nodes_by_identifier[node.meta[0].id] = node
-            data.id_to_idx[node.meta[0].id] = get_idx(node)
-            data.idx_to_id[get_idx(node)] = node.meta[0].id
+        if (!window.graph_data.nodes_by_idx[get_idx(node)]) {
+            node.links = [];
+            window.graph_data.nodes.push(node)
+            window.graph_data.nodes_by_idx[node.row[0].idx] = node
+            window.graph_data.nodes_by_identifier[node.meta[0].id] = node
+            window.graph_data.id_to_idx[node.meta[0].id] = get_idx(node)
+            window.graph_data.idx_to_id[get_idx(node)] = node.meta[0].id
         }
     }
-    return data
+    return window.graph_data
 }
 
 var get_empety_data = () => {
@@ -156,15 +174,17 @@ var gather_nodes = (res) => {
         for (var i in errors) { console.error(errors[i]) }
         return
     }
-    var data = get_empety_data()
-    window.graph_data = data
 
-    data = add_nodes(data, results[0]['data']);
+    window.graph_data = get_empety_data()
 
-    get_links(data)()
+    add_nodes(results[0]['data']);
+    d3_paint_nodes(window.graph_data.nodes);
+    var tags = d3.select("#all_tags");
+    window.graph_data.tags = tags
+    d3_paint_tags_nodes();
+    get_links(d3_re_paint(initializeSimulation));
 }
-var more_nodes = (data) => {
-    var more_nodes_ = (res) => {
+var more_nodes = (res) => {
         /* 
         Add more nodes
         */
@@ -174,13 +194,19 @@ var more_nodes = (data) => {
             return
         }
 
-        data = add_nodes(data, results[0]['data']);
+        add_nodes(results[0]['data']);
+        simulation.stop()
 
-        get_links(data)()
-    }
-    return more_nodes_
+        var d3_node_start = d3.select("svg")
+            .selectAll(".node")
+            .data(window.graph_data.nodes)
+
+        var { d3nodes } = realize_d3_nodes(d3_node_start.enter())
+        window.graph_data.d3nodes._groups = [...window.graph_data.d3nodes._groups, ...d3nodes._groups]
+        get_links(d3_re_paint(updateForces))
+        d3_paint_tags_nodes()
 }
-var gather_links = (data, callback) => {
+var gather_links = (callback) => {
     var gather_links_ = (res,) => {
         /*
         Collect link data from API response
@@ -191,21 +217,23 @@ var gather_links = (data, callback) => {
             for (var i in errors) { console.error(errors[i]) }
             return
         }
-        var links = []
+        window.graph_data.links = []
         for (var i in results[0].data) {
             var result = results[0].data[i].row
-            result.source = data.nodes_by_idx[result[0]]
-            result.target = data.nodes_by_idx[result[2]]
-            links.push(result)
+            result.source = window.graph_data.nodes_by_idx[result[0]]
+            result.source.links.push(result)
+            result.target = window.graph_data.nodes_by_idx[result[2]]
+            result.target.links.push(result)
+            window.graph_data.links.push(result)
         }
-        data.links = links
-        callback(data)
+        d3_paint_tags_links();
+        callback();
     }
     return gather_links_
 }
 
-var expand_node_upward = (data, idx) => {
-    var id_ = data.idx_to_id[idx];
+var expand_node_upward = (idx) => {
+    var id_ = window.graph_data.idx_to_id[idx];
 
     transaction({
         statements: [{
@@ -217,12 +245,12 @@ var expand_node_upward = (data, idx) => {
             parameters: {},
         }]
     },
-        more_nodes(data), console.error
+        more_nodes, console.error
     )
 }
 
-var expand_node_downward = (data, idx) => {
-    var id_ = data.idx_to_id[idx]
+var expand_node_downward = (idx) => {
+    var id_ = window.graph_data.idx_to_id[idx]
     transaction({
         statements: [{
             statement: `
@@ -233,11 +261,11 @@ var expand_node_downward = (data, idx) => {
             parameters: {},
         }]
     },
-        more_nodes(data), console.error
+        more_nodes, console.error
     )
 }
 
-var click_to_expand = (schema, data) => {
+var click_to_expand = (schema) => {
     /*
     schema: "upward", "downward"
     */
@@ -247,29 +275,27 @@ var click_to_expand = (schema, data) => {
     }[schema]
 
     var click_to_expand_ = (e, d) => {
-        expander(data, get_idx(d))
+        expander(get_idx(d))
     }
     return click_to_expand_
 }
 
 /* paint functions */
 
-var d3_paint_tags_nodes = (data) => {
-    var { tags } = data
-
-    var node_tags = tags
-        .selectAll(".node_tag")
-        .data(data.nodes).enter()
+var realize_d3_tags_nodes = (start) => {
+    var node_tag = start
         .append("div")
         .attr("id", d => `node_tag_frame_${get_idx(d)}`)
         .attr("class", "node_tag card single_tag")
 
-    var node_tags_head = node_tags
+    node_tag.merge(start)
+
+    var node_tags_head = node_tag
         .append("div")
-        .attr("class", "card-header")
+        .attr("class", "card-header text-primary")
         .attr("id", d => `node_head_${get_idx(d)}`)
 
-    node_tags_head.append("h6")
+    node_tags_head
         .append("div")
         .attr("data-toggle", "collapse")
         .attr("data-target", d => `#node_tag_${get_idx(d)}`)
@@ -278,8 +304,8 @@ var d3_paint_tags_nodes = (data) => {
         .text(d => shorten(d.row[0].name))
         .on("click", node_active)
 
-    var node_tags_body = node_tags.append("div")
-        .attr("id", (d) => { return `node_tag_${d.row[0].idx}` })
+    var node_tags_body = node_tag.append("div")
+        .attr("id", d => `node_tag_${d.row[0].idx}`)
         .attr("class", "collapse p-2 tag_body")
         .attr("aria-labelledby", (d) => { return `node_head_${d.row[0].idx}` })
         .attr("data-parent", "#all_tags")
@@ -289,7 +315,7 @@ var d3_paint_tags_nodes = (data) => {
 
     var node_tag_btns_up = node_tag_btns.append("div")
         .attr("class", "node_traverse_upward btn btn-success btn-sm")
-        .on("click", click_to_expand("upward", data))
+        .on("click", click_to_expand("upward"))
 
     node_tag_btns_up
         .append("i")
@@ -297,7 +323,7 @@ var d3_paint_tags_nodes = (data) => {
 
     var node_tag_btns_clear_up = node_tag_btns.append("div")
         .attr("class", "node_clear_upward btn btn-success btn-sm")
-        .on("click", (e, d) => remove_side(data, "upward")(get_idx(d)))
+        .on("click", (e, d) => remove_side("upward")(get_idx(d)))
 
     node_tag_btns_clear_up
         .append('i')
@@ -305,7 +331,7 @@ var d3_paint_tags_nodes = (data) => {
 
     var node_tag_btns_down = node_tag_btns.append("div")
         .attr("class", "node_traverse_downward btn btn-warning btn-sm")
-        .on("click", click_to_expand("downward", data))
+        .on("click", click_to_expand("downward"))
 
     node_tag_btns_down
         .append("i")
@@ -313,27 +339,43 @@ var d3_paint_tags_nodes = (data) => {
 
     var node_tag_btns_clear_down = node_tag_btns.append("div")
         .attr("class", "node_clear_downward btn btn-warning btn-sm")
+        .on("click", (e, d) => remove_side("downward")(get_idx(d)))
 
     node_tag_btns_clear_down
         .append('i')
         .attr('class', 'fa fa-trash')
 
+    var node_tag_btns_remove_node = node_tag_btns.append("div")
+        .attr("class", "node_remove btn btn-danger btn-sm")
+        .on("click", (e,d)=> remove_node(get_idx(d)))
+
+    node_tag_btns_remove_node
+    .append('i')
+        .attr('class', 'fa fa-trash')
+
     node_tags_body.append((d) => { return pretty_json(d.row[0]) })
 }
 
-var d3_paint_tags_links = (data) => {
-    var { tags } = data
+var d3_paint_tags_nodes = () => {
+    var { tags } = window.graph_data
 
-    /* line tags*/
-    var line_tags = tags
-        .selectAll(".line_tag")
-        .data(data.links).enter()
-        .append("div")
-        .attr("class", "line_tag card single_tag")
+    var node_tags = tags
+        .selectAll(".node_tag")
+        .data(window.graph_data.nodes)
+
+    realize_d3_tags_nodes(node_tags.enter())
+}
+
+var realize_d3_tags_links = (start) => {
+    var line_tags  = start
+    .append("div")
+    .attr("class", "line_tag card single_tag")
+
+    line_tags.merge(start)
 
     var line_tags_head = line_tags
         .append("div")
-        .attr("class", "card-header")
+        .attr("class", "card-header text-danger")
         .attr("id", (d) => { return `line_head_${get_link_triplets(d)}` })
 
     line_tags_head.append("h6")
@@ -354,31 +396,35 @@ var d3_paint_tags_links = (data) => {
         .append((d) => { return pretty_json(d[1]) })
 }
 
+var d3_paint_tags_links = () => {
+    var { tags } = window.graph_data
+    /* line tags*/
+    var line_tags = tags
+        .selectAll(".line_tag")
+        .data(window.graph_data.links)
 
-
-var d3_paint_tags = (data) => {
-    var tags = d3.select("#all_tags")
-    data.tags = tags
-    d3_paint_tags_nodes(data);
-    d3_paint_tags_links(data);
+    realize_d3_tags_links(line_tags.enter())
 }
 
 var realize_d3_nodes = (d3_node_start) => {
-    var d3nodes = d3_node_start.enter().append("g")
-    .attr("class", "node")
-    .attr("id", d => `node_g_${get_idx(d)}`)
-    .attr("r", forceProperties.collide.radius)
-    .call(d3.drag()
+    var d3nodes = d3_node_start.append("g")
+
+    d3nodes.merge(d3_node_start).call(d3.drag()
         .on("start", dragstarted)
         .on("drag", dragged)
         .on("end", dragended))
+
+    d3nodes
+        .attr("class", "node")
+        .attr("id", d => `node_g_${get_idx(d)}`)
+        .attr("r", forceProperties.collide.radius)
 
     var d3boxes = d3nodes.append("rect")
         .attr("id", d => `node_box_${get_idx(d)}`)
         .attr("class", "node_box")
         .attr("width", "120")
         .attr("height", "60")
-        .attr("rx", "20").attr("ry", "20")
+        .attr("rx", "10").attr("ry", "30")
         .attr("alignment-baseline", "middle")
         .attr("style", style_config.node.deactive)
         .on("click", node_active);
@@ -389,58 +435,44 @@ var realize_d3_nodes = (d3_node_start) => {
         .text(visualize_node)
         .on("click", node_active);
 
-    return {d3nodes, d3boxes, d3texts,d3_node_start}
+    return { d3nodes, d3boxes, d3texts, d3_node_start }
 }
 
 var d3_paint_nodes = (nodes) => {
     var d3_node_start = d3.select("svg")
         .selectAll(".node")
         .data(nodes)
-    return realize_d3_nodes(d3_node_start)
+    var { d3nodes, d3boxes, d3texts, d3_node_start 
+    } = realize_d3_nodes(d3_node_start.enter())
+    window.graph_data.d3nodes = d3nodes
 }
 
-
-var d3_paint_links = (links) => {
+var d3_paint_links = () => {
     var u = d3.select("svg")
         .selectAll(".link")
-        .data(links)
+        .data(window.graph_data.links)
 
-    var d3links = u.enter().append("line")
+    window.graph_data.d3links = u.enter().append("line")
         .attr("id", d => `link_${get_link_triplets(d)}`)
         .attr("class", d => `link link_start_${d[0]} link_end_${d[2]}`)
-        .attr("data-start", d=>d[0])
-        .attr("data-end", d=>d[0])
+        .attr("data-start", d => d[0])
+        .attr("data-end", d => d[0])
         .attr("style", style_config.line.deactive)
         .merge(u).on("click", link_active);
 
     // var line = link.append("line")
 
-    var d3link_text = d3links.append("text")
+    window.graph_data.d3link_text = window.graph_data.d3links
+        .append("text")
         .text(visualize_link)
-
-    return { d3links, d3link_text }
 }
 
-var d3_paint_graph = (data) => {
-    // var nodes = data.nodes;
-
-    // var links = data.links;
-    data = { ...data, ...d3_paint_nodes(data.nodes) }
-    data = { ...data, ...d3_paint_links(data.links) }
-    return data
-}
-
-var d3_paint = (data) => {
-    discard_all()
-    data = d3_paint_graph(data)
-    window.graph_data = data
-    initializeSimulation(simulation, data)
-    d3_paint_tags(data)
-}
-
-var discard_all = () => {
-    discard_nodes()
-    discard_links()
+var d3_re_paint = (callback) => {
+    var d3_re_paint_ = () => {
+        d3_paint_links()
+        callback()
+    }
+    return d3_re_paint_
 }
 
 var discard_nodes = () => {

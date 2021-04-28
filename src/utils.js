@@ -25,6 +25,7 @@ const json_options = {
 const style_config = {
     node: {
         active: "fill:rgba(255,200,80,0.6);stroke:rgba(200,120,80,0.6);stroke-width:5",
+        active2: "fill:rgba(255,255,80,0.6);stroke:rgba(200,180,20,0.6);stroke-width:5",
         deactive: "fill:rgba(130,190,180,0.6);stroke:rgba(70,120,230,0.6);stroke-width:3"
     },
     line: {
@@ -51,7 +52,7 @@ var transaction = (data, callback = console.log,
         ]
     }
     */
-    console.info(`tx data ${JSON.stringify(data, null, 2)}`)
+    // console.info(`tx data ${JSON.stringify(data, null, 2)}`)
     var config = window.iso_config
     var { url, name_kw, id_kw } = config;
     fetch(url, {
