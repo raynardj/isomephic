@@ -22,6 +22,12 @@ const visualize_link = (d) => {
 
 /* Event Functions */
 
+var reorder = () =>{
+    d3.select("#all_tags")
+    .selectAll(".single_tag")
+    .sort((a,b) => b.tag_order-a.tag_order)
+}
+
 var deactivate_all = () => {
     /*
     Switch all nodes/ edges into deactivated status
@@ -32,13 +38,23 @@ var deactivate_all = () => {
     $(".link").each(function () {
         this.style = style_config.line.deactive
     })
+    window.graph_data.nodes
+    .map(d=>{d.tag_order = 15})
+    window.graph_data.links
+    .map(d=>{d.tag_order = 10})
+
+    reorder()
 }
 
 var node_active = (e, d) => {
     var idx = d.row[0].idx
     deactivate_all()
     byId(`node_box_${idx}`).style = style_config.node.active
-    $(`#node_tag_${idx}`).collapse('show')
+    
+    d.tag_order+=20
+    $(byId(`node_tag_${idx}`)).collapse('show');
+
+    reorder()
 }
 
 
@@ -60,6 +76,9 @@ var link_active = (e, d) => {
     $(`#line_tag_${triplet}`).collapse('show')
 
     node_active2([d.source, d.target])
+
+    d.tag_order+=20
+    reorder()
 }
 
 var find_upward = (idx) => {
@@ -152,6 +171,7 @@ var get_links = (callback) => {
 var add_nodes = (new_nodes) => {
     for (var i in new_nodes) {
         var node = new_nodes[i];
+        node.tag_order = 15;
         if (!window.graph_data.nodes_by_idx[get_idx(node)]) {
             node.links = [];
             window.graph_data.nodes.push(node)
@@ -224,6 +244,7 @@ var gather_links = (callback) => {
             result.source.links.push(result)
             result.target = window.graph_data.nodes_by_idx[result[2]]
             result.target.links.push(result)
+            result.tag_order = 10
             window.graph_data.links.push(result)
         }
         d3_paint_tags_links();
